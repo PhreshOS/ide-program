@@ -1,103 +1,88 @@
 import { context, system } from "@phreshos/server"
-import { build } from "esbuild"
-import { mkdir, writeFile } from "node:fs/promises"
+import type { Position, Program, Size } from "@phreshos/core"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
-
-/** What the Client sends to run: the built Program's name, and its code. */
-type Run = Readonly<{ name: string, source: string }>
-
-/** Either the built Program now running, or what the bundler reported. */
-type Outcome = Readonly<{ ran: true, identity: string }> | Readonly<{ ran: false, errors: string[] }>
+import { app, files, type AppState, type File, type Outcome, type Project } from "@shared/project"
+import buildApp from "./build"
+import { template } from "./templates"
 
 const program = await context.program()
+const data = await program.data.path()
+const projectFolder = join(data, "project")
+const appFolder = join(data, "app")
 
-// The libraries a built Program imports are the ones installed beside this Server.
-const libraries = join(import.meta.dirname, "node_modules")
+await mkdir(projectFolder, { recursive: true })
+for (const file of files) await writeFile(join(projectFolder, file), template[file], { flag: "wx" }).catch(() => undefined)
 
-/**
- * Builds one Program from its code and runs it: its files are written into this Program's data,
- * created in the System under its own identity, and one Process starts. Running it again replaces
- * the earlier one, whose Processes end first.
- */
-context.answer("run", async ({ payload }): Promise<Outcome> => {
-    const { name, source } = payload as Run
-    const identity = identityOf(name)
-    const folder = join(await program.data.path(), "programs", identity)
-    const client = join(folder, "client")
+// This is the one IDE Server, shared by every IDE window. It holds the app as the System has it, and
+// announces its state whenever one of its Processes starts or ends, such as when its window is closed.
+let built: Program | null = await system.program.find(app.identity)
+let stopFollowing = follow(built)
 
-    // Nothing is removed first: a failed build writes nothing, so the running Program keeps its files.
-    await mkdir(join(folder, "source"), { recursive: true })
-    await mkdir(join(folder, "storage"), { recursive: true })
-    await writeFile(join(folder, "source", "app.tsx"), source)
-    await writeFile(join(folder, "source", "main.tsx"), entry)
+context.answer("project.read", () => read())
 
-    const result = await build({
-        entryPoints: [join(folder, "source", "main.tsx")],
-        outfile: join(client, "main.js"),
-        bundle: true,
-        format: "esm",
-        jsx: "automatic",
-        minify: true,
-        nodePaths: [libraries],
-        define: { "process.env.NODE_ENV": "\"production\"" },
-        logLevel: "silent"
-    }).catch((error: { errors?: { text: string, location?: { line: number, column: number } | null }[] }) => error)
-
-    if ("errors" in result && result.errors?.length) {
-        return { ran: false, errors: result.errors.map(error => error.location ? `${error.location.line}:${error.location.column} ${error.text}` : error.text) }
-    }
-
-    await writeFile(join(client, "index.html"), page(name))
-
-    const built = await system.program.forceCreate({
-        identity,
-        name,
-        storage: join(folder, "storage"),
-        client: { location: client, title: name, size: { width: 480, height: 360 } }
-    })
-
-    await built.createProcess()
-
-    return { ran: true, identity }
+context.answer("project.save", async ({ payload }) => {
+    const { file, text } = payload as { file: File, text: string }
+    if (!files.includes(file)) throw new Error(`The project has no file ${file}`)
+    await writeFile(join(projectFolder, file), text)
 })
 
-/** A Program identity from its name: kebab-case, so "My Counter" is "my-counter". */
-function identityOf(name: string) {
-    const identity = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
-    if (!identity) throw new Error("The Program needs a name with letters or digits")
-    return identity
+context.answer("app.state", async () => await state())
+
+/**
+ * Builds the app and runs it: created in the System from its files, with one Process. Starting it
+ * while it runs restarts it: the earlier app's Processes end first, and its window keeps its place.
+ */
+context.answer("app.start", async ({ payload }): Promise<Outcome> => {
+    const { beside } = (payload ?? {}) as { beside?: Position }
+    const errors = await buildApp(await read(), appFolder)
+    if (errors.length) return { ran: false, errors }
+
+    const place = await currentPlace() ?? (beside ? { position: beside } : {})
+
+    built = await system.program.forceCreate({
+        identity: app.identity,
+        name: app.name,
+        storage: join(appFolder, "storage"),
+        server: { location: join(appFolder, "server"), worker: "main.js" },
+        client: { location: join(appFolder, "client"), title: app.name, size: { width: 420, height: 380 } }
+    })
+    stopFollowing()
+    stopFollowing = follow(built)
+    await built.createProcess({ client: place })
+    return { ran: true }
+})
+
+context.answer("app.stop", async () => {
+    for (const process of await processes()) await process.exit()
+})
+
+async function read(): Promise<Project> {
+    return Object.fromEntries(await Promise.all(files.map(async file => [file, await readFile(join(projectFolder, file), "utf8")]))) as Project
 }
 
-/** Every built Program starts the same way: its App, in the System's Appearance and the Desktop's preferences. */
-const entry = `import client from "react-dom/client"
-import { desktop, system } from "@phreshos/client"
-import { DesktopProvider, SystemProvider, useDesktopPreferences, useSystemAppearance } from "@phreshos/react"
-import { DocumentTheme, UIProvider } from "@phreshos/react-ui"
-import App from "./app"
-
-function Themed() {
-    return <UIProvider appearance={useSystemAppearance()} preferences={useDesktopPreferences()}>
-        <DocumentTheme />
-        <App />
-    </UIProvider>
+/** The app's Processes now, or none while the System has no app. */
+async function processes() {
+    return await built?.processes() ?? []
 }
 
-client.createRoot(document.body).render(<SystemProvider system={system}>
-    <DesktopProvider desktop={desktop}><Themed /></DesktopProvider>
-</SystemProvider>)
-`
+async function state(): Promise<AppState> {
+    return { running: (await processes()).length > 0 }
+}
 
-function page(name: string) {
-    const title = name.replace(/[<&]/g, character => character === "<" ? "&lt;" : "&amp;")
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>${title}</title>
-    <script type="module" src="./main.js"></script>
-</head>
-<body></body>
-</html>
-`
+/** Announces the app's state each time one of its Processes starts or ends. */
+function follow(current: Program | null) {
+    if (!current) return () => undefined
+    const announce = () => void state().then(value => context.publish("app.state", value))
+    const stopCreate = current.subscribe("processCreate", announce)
+    const stopExit = current.subscribe("processExit", announce)
+    return () => { stopCreate(); stopExit() }
+}
+
+/** Where the running app's window stands, and its size, so a restarted app opens in the same place. */
+async function currentPlace(): Promise<{ position: Position, size: Size } | null> {
+    const [process] = await processes()
+    if (!process) return null
+    const window = process.client.window
+    return await Promise.all([window.position(), window.size()]).then(([position, size]) => ({ position, size })).catch(() => null)
 }

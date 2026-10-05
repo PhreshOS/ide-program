@@ -7,9 +7,9 @@ const { build } = await import("vite")
 
 await rm("dist", { recursive: true, force: true })
 
-// The bundler, and every library a built Program may import, are installed beside the Server.
-const { esbuild, react, "react-dom": reactDom, "@phreshos/client": client, "@phreshos/react": phreshReact, "@phreshos/react-ui": reactUi } = packageConfig.dependencies
-const dependencies = { esbuild, react, "react-dom": reactDom, "@phreshos/client": client, "@phreshos/react": phreshReact, "@phreshos/react-ui": reactUi }
+// The bundler, and every library the app may import, its Server's and its Client's, are installed beside the Server.
+const installed = ["esbuild", "react", "react-dom", "@phreshos/server", "@phreshos/client", "@phreshos/react", "@phreshos/react-ui"] as const
+const dependencies = Object.fromEntries(installed.map(name => [name, packageConfig.dependencies[name]]))
 
 await build({ configFile: "vite.config.ts", ssr: { external: ["esbuild"], noExternal: true } })
 await build({ configFile: "vite.client.ts" })

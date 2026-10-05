@@ -3,14 +3,16 @@ import { defineConfig } from "@phreshos/core"
 export default defineConfig({
   identity: "ide",
   name: "IDE",
-  description: "Write a Program and run it in the System at once.",
+  description: "Write a PhreshOS app, its Server and its Client, and run it beside the IDE.",
   version: "0.0.1",
   categories: ["Development"],
   buildCommand: "vite-node scripts/build.ts",
-  // Creating and replacing the Programs it builds is the System-wide power `all`.
+  // Creating the app is the System-wide power `all`: a definition grants the app what it declares.
   permissions: { all: true },
+  // One Server holds the project and runs the app, in the Process named "ide"; windows are Clients that reach it.
   server: {
     location: "dist/server",
+    start: false,
     worker: "main.js",
     // The bundler, and the libraries a built Program imports, are installed beside the Server.
     installCommand: "npm install --omit=dev --no-audit"
@@ -18,6 +20,6 @@ export default defineConfig({
   client: {
     location: "dist/client",
     title: "IDE",
-    size: { width: 900, height: 620 }
+    size: { width: 760, height: 560 }
   }
 })
