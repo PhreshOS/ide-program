@@ -4,8 +4,13 @@ export default defineConfig({
   identity: "ide",
   name: "IDE",
   description: "Write a PhreshOS app, its Server and its Client, and run it beside the IDE.",
-  version: "0.0.1",
+  version: "0.1.0",
+  // Drawn from icon.svg: an apricot frame, and on its dark soil a code tag whose slash is a sprout.
+  icon: "icon.png",
   categories: ["Development"],
+  keywords: ["ide", "editor", "code", "typescript", "react"],
+  website: "https://github.com/PhreshOS/ide-program",
+  agent: "agent.md",
   buildCommand: "vite-node scripts/build.ts",
   // Creating the app is the System-wide power `all`: a definition grants the app what it declares.
   permissions: { all: true },

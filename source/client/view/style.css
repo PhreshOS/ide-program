@@ -30,4 +30,6 @@ body {
 .editor[hidden] { display: none; }
 .editor-scroll { min-height: 0; overflow: hidden; }
 
-.ide-errors { max-height: 9rem; overflow: auto; padding: 0.5rem 0.75rem; border-radius: 10px; }
+/* What the bundler reported: each line with its file, line, and column, in the editor's type. */
+.ide-errors { max-height: 10rem; overflow: auto; }
+.ide-error-lines { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8125rem; white-space: pre-wrap; }

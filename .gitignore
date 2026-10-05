@@ -3,3 +3,4 @@ dist
 storage
 *.zip
 *.zip.sha256
+/program.json

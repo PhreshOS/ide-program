@@ -1,4 +1,4 @@
-import { Button, Code, SegmentedControl, Surface, Text } from "@phreshos/react-ui"
+import { Alert, Button, SegmentedControl, Surface, Text } from "@phreshos/react-ui"
 import { Play, RotateCw, Square } from "@phreshos/react-ui/icons"
 import { useEffect, useRef, useState } from "react"
 import { app, files, type AppState, type File, type Outcome, type Project } from "@shared/project"
@@ -105,8 +105,8 @@ export default function IDE() {
         <Surface depth="recessed" className="ide-files">
             {files.map(name => <Editor key={name} path={paths[name]} text={project[name]} hidden={name !== file} typescript={typescript} onChange={text => edit(name, text)} />)}
         </Surface>
-        {errors.length > 0 && <Surface depth="recessed" color="danger:subtle" className="ide-errors">
-            <Code style={{ whiteSpace: "pre-wrap", background: "transparent" }}>{errors.join("\n")}</Code>
-        </Surface>}
+        {errors.length > 0 && <Alert color="danger" title="The app did not build" className="ide-errors">
+            <div className="ide-error-lines">{errors.join("\n")}</div>
+        </Alert>}
     </div>
 }
