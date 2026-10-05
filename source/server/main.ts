@@ -1,5 +1,5 @@
 import { context, system } from "@phreshos/server"
-import type { Launch, Position, Program, Size } from "@phreshos/core"
+import type { Launch, Position, Process, Program, Size } from "@phreshos/core"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { app, files, type AppState, type File, type Outcome, type Project } from "@shared/project"
@@ -21,13 +21,13 @@ for (const file of files) await writeFile(join(projectFolder, file), template[fi
  */
 const self = await context.process()
 
-// The app as the System has it. One left running without this Server, from an earlier IDE, ends.
-let built: Program | null = await system.program.find(app.identity)
-for (const process of await built?.processes() ?? []) await process.exit()
-let stopFollowing = follow(built)
+// An app left running without this Server, from an earlier IDE, ends.
+for (const process of await (await system.program.find(app.identity))?.processes() ?? []) await process.exit()
 
-// The running app's run: leaving it ends the app.
+// The app's run, and its Process once started: leaving the run ends the app. What this Server knows
+// of the app comes from the run itself, never from asking about a Program that may have been replaced.
 let run: AbortController | null = null
+let running: Process | null = null
 
 // The windows are this Program's other Processes; once the last one has closed, the IDE ends.
 program.subscribe("processExit", () => void endWithoutWindows())
@@ -41,7 +41,7 @@ context.answer("project.save", async ({ payload }) => {
     await writeFile(join(projectFolder, file), text)
 })
 
-context.answer("app.state", async () => await state())
+context.answer("app.state", () => state())
 
 /**
  * Builds the app and runs it: created in the System from its files, with one Process that belongs
@@ -55,16 +55,23 @@ context.answer("app.start", async ({ payload }): Promise<Outcome> => {
 
     const place = await currentPlace() ?? (beside ? { position: beside } : {})
 
-    built = await system.program.forceCreate({
-        identity: app.identity,
-        name: app.name,
-        storage: join(appFolder, "storage"),
-        server: { location: join(appFolder, "server"), worker: "main.js" },
-        client: { location: join(appFolder, "client"), title: app.name, size: { width: 420, height: 380 } }
-    })
-    stopFollowing()
-    stopFollowing = follow(built)
-    await runApp(built, { client: place })
+    // The earlier run is let go first, so its ending, as it is replaced, does not read as a stop.
+    run = null
+    try {
+        const built = await system.program.forceCreate({
+            identity: app.identity,
+            name: app.name,
+            storage: join(appFolder, "storage"),
+            server: { location: join(appFolder, "server"), worker: "main.js" },
+            client: { location: join(appFolder, "client"), title: app.name, size: { width: 420, height: 380 } }
+        })
+        await runApp(built, { client: place })
+    }
+    catch (error) {
+        running = null
+        announce()
+        throw error
+    }
     return { ran: true }
 })
 
@@ -75,10 +82,22 @@ function runApp(app: Program, launch: Launch) {
     const current = new AbortController()
     run = current
     return new Promise<void>((started, failed) => void (async () => {
-        try { for await (const event of app.runProcess(launch, { signal: current.signal })) if (event.event === "started") started() }
+        try {
+            for await (const event of app.runProcess(launch, { signal: current.signal })) {
+                if (event.event !== "started" || run !== current) continue
+                running = event.process
+                announce()
+                started()
+            }
+        }
         catch (error) { failed(error) }
         finally {
-            if (run === current) run = null
+            // A restart's earlier run ends after the new one began; only the current run's end stops the app.
+            if (run === current) {
+                run = null
+                running = null
+                announce()
+            }
             started()
         }
     })())
@@ -94,28 +113,18 @@ async function read(): Promise<Project> {
     return Object.fromEntries(await Promise.all(files.map(async file => [file, await readFile(join(projectFolder, file), "utf8")]))) as Project
 }
 
-/** The app's Processes now, or none while the System has no app. */
-async function processes() {
-    return await built?.processes() ?? []
+function state(): AppState {
+    return { running: running !== null }
 }
 
-async function state(): Promise<AppState> {
-    return { running: (await processes()).length > 0 }
-}
-
-/** Announces the app's state each time one of its Processes starts or ends. */
-function follow(current: Program | null) {
-    if (!current) return () => undefined
-    const announce = () => void state().then(value => context.publish("app.state", value))
-    const stopCreate = current.subscribe("processCreate", announce)
-    const stopExit = current.subscribe("processExit", announce)
-    return () => { stopCreate(); stopExit() }
+/** Tells every IDE window whether the app runs now. */
+function announce() {
+    void context.publish("app.state", state())
 }
 
 /** Where the running app's window stands, and its size, so a restarted app opens in the same place. */
 async function currentPlace(): Promise<{ position: Position, size: Size } | null> {
-    const [process] = await processes()
-    if (!process) return null
-    const window = process.client.window
+    if (!running) return null
+    const window = running.client.window
     return await Promise.all([window.position(), window.size()]).then(([position, size]) => ({ position, size })).catch(() => null)
 }
