@@ -3,6 +3,9 @@ import { Play, RotateCw, Square } from "@phreshos/react-ui/icons"
 import { useEffect, useRef, useState } from "react"
 import { app, files, type AppState, type File, type Outcome, type Project } from "@shared/project"
 import { ask, besideThisWindow, followAppState } from "@client/core/ide-server"
+import { startTypeScript } from "@client/core/typescript"
+import { paths } from "@shared/typescript"
+import type { WorkerShape } from "@valtown/codemirror-ts/worker"
 import { useFirstArrival } from "./readiness"
 import Editor from "./editor"
 
@@ -19,6 +22,7 @@ export default function IDE() {
     const [file, setFile] = useState<File>("client.tsx")
     const [busy, setBusy] = useState(false)
     const [errors, setErrors] = useState<readonly string[]>([])
+    const [typescript, setTypescript] = useState<WorkerShape | null>(null)
     const texts = useRef<Partial<Record<File, string>>>({})
     const pending = useRef<Partial<Record<File, ReturnType<typeof setTimeout>>>>({})
 
@@ -30,6 +34,17 @@ export default function IDE() {
     }, [])
 
     useFirstArrival(project !== null && state !== null)
+
+    // TypeScript starts once the project is here, and joins the editors when it is ready; the
+    // window does not wait for it.
+    const started = project !== null
+    useEffect(() => {
+        if (!project) return
+        let current = true
+        void startTypeScript(project).then(worker => { if (current) setTypescript(() => worker) }).catch(() => undefined)
+        return () => { current = false }
+        // Only the project as first read: what is typed afterwards reaches TypeScript from the editors.
+    }, [started])
 
     function edit(file: File, text: string) {
         texts.current[file] = text
@@ -79,7 +94,7 @@ export default function IDE() {
                 : <Button size="small" color="primary" pending={busy} onPress={() => void start()}><Play /> Start</Button>}
         </div>
         <Surface depth="recessed" className="ide-files">
-            {files.map(name => <Editor key={name} text={project[name]} hidden={name !== file} onChange={text => edit(name, text)} />)}
+            {files.map(name => <Editor key={name} path={paths[name]} text={project[name]} hidden={name !== file} typescript={typescript} onChange={text => edit(name, text)} />)}
         </Surface>
         {errors.length > 0 && <Surface depth="recessed" color="danger:subtle" className="ide-errors">
             <Code style={{ whiteSpace: "pre-wrap", background: "transparent" }}>{errors.join("\n")}</Code>

@@ -10,7 +10,10 @@ export default defineConfig({
     resolve: {
         tsconfigPaths: true,
         // Linked SDKs must consume the Program's renderer instance.
-        dedupe: ["react", "react-dom"]
+        dedupe: ["react", "react-dom"],
+        // In the browser, "typescript" is the TypeScript that runs in JavaScript: the editor's
+        // TypeScript libraries import it by that name, while the IDE itself is checked by the native one.
+        alias: { typescript: "typescript-service" }
     },
     server: {
         // The address `phresh dev` chose, so it and the System reach this server.
