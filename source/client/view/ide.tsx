@@ -8,6 +8,7 @@ import { paths } from "@shared/typescript"
 import type { WorkerShape } from "@valtown/codemirror-ts/worker"
 import { useFirstArrival } from "./readiness"
 import Editor from "./editor"
+import FileIcon from "./file-icon"
 
 /** How long typing rests before a file is saved. */
 const saveDelay = 400
@@ -34,6 +35,14 @@ export default function IDE() {
     }, [])
 
     useFirstArrival(project !== null && state !== null)
+
+    // Everything is saved as it is typed, so the save keys do nothing, rather than the browser's
+    // own save of the page.
+    useEffect(() => {
+        const ignoreSave = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") event.preventDefault() }
+        document.addEventListener("keydown", ignoreSave)
+        return () => document.removeEventListener("keydown", ignoreSave)
+    }, [])
 
     // TypeScript starts once the project is here, and joins the editors when it is ready; the
     // window does not wait for it.
@@ -83,7 +92,7 @@ export default function IDE() {
     return <div className="ide">
         <div className="ide-bar">
             <SegmentedControl aria-label="File" size="small" value={file} onChange={value => setFile(value as File)}>
-                {files.map(name => <SegmentedControl.Item key={name} id={name}>{name}</SegmentedControl.Item>)}
+                {files.map(name => <SegmentedControl.Item key={name} id={name}><FileIcon file={name} /> {name}</SegmentedControl.Item>)}
             </SegmentedControl>
             <Text size="small" tone="secondary" className="ide-status">{app.name} · {state.running ? "running" : "stopped"}</Text>
             {state.running
