@@ -1,5 +1,5 @@
 import { context, system } from "@phreshos/server"
-import type { Position, Program, Size } from "@phreshos/core"
+import type { Launch, Position, Program, Size } from "@phreshos/core"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { app, files, type AppState, type File, type Outcome, type Project } from "@shared/project"
@@ -14,10 +14,24 @@ const appFolder = join(data, "app")
 await mkdir(projectFolder, { recursive: true })
 for (const file of files) await writeFile(join(projectFolder, file), template[file], { flag: "wx" }).catch(() => undefined)
 
-// This is the one IDE Server, shared by every IDE window. It holds the app as the System has it, and
-// announces its state whenever one of its Processes starts or ends, such as when its window is closed.
+/*
+ * This is the one IDE Server, shared by every IDE window, and the app lives within it: the app runs
+ * as long as this Server runs it, and this Server runs as long as an IDE window is open. The System
+ * holds the app to that, ending it with this Server however this Server ends.
+ */
+const self = await context.process()
+
+// The app as the System has it. One left running without this Server, from an earlier IDE, ends.
 let built: Program | null = await system.program.find(app.identity)
+for (const process of await built?.processes() ?? []) await process.exit()
 let stopFollowing = follow(built)
+
+// The running app's run: leaving it ends the app.
+let run: AbortController | null = null
+
+// The windows are this Program's other Processes; once the last one has closed, the IDE ends.
+program.subscribe("processExit", () => void endWithoutWindows())
+await endWithoutWindows()
 
 context.answer("project.read", () => read())
 
@@ -30,8 +44,9 @@ context.answer("project.save", async ({ payload }) => {
 context.answer("app.state", async () => await state())
 
 /**
- * Builds the app and runs it: created in the System from its files, with one Process. Starting it
- * while it runs restarts it: the earlier app's Processes end first, and its window keeps its place.
+ * Builds the app and runs it: created in the System from its files, with one Process that belongs
+ * to this Server. Starting it while it runs restarts it: the earlier app ends first, and its window
+ * keeps its place.
  */
 context.answer("app.start", async ({ payload }): Promise<Outcome> => {
     const { beside } = (payload ?? {}) as { beside?: Position }
@@ -49,13 +64,31 @@ context.answer("app.start", async ({ payload }): Promise<Outcome> => {
     })
     stopFollowing()
     stopFollowing = follow(built)
-    await built.createProcess({ client: place })
+    await runApp(built, { client: place })
     return { ran: true }
 })
 
-context.answer("app.stop", async () => {
-    for (const process of await processes()) await process.exit()
-})
+context.answer("app.stop", () => { run?.abort() })
+
+/** Runs the app until its run is left, its window is closed, or this Server ends; resolves once it has started. */
+function runApp(app: Program, launch: Launch) {
+    const current = new AbortController()
+    run = current
+    return new Promise<void>((started, failed) => void (async () => {
+        try { for await (const event of app.runProcess(launch, { signal: current.signal })) if (event.event === "started") started() }
+        catch (error) { failed(error) }
+        finally {
+            if (run === current) run = null
+            started()
+        }
+    })())
+}
+
+/** Ends the IDE once no window of it is open. */
+async function endWithoutWindows() {
+    const windows = (await program.processes()).filter(process => process.identity !== self.identity)
+    if (!windows.length) await self.exit()
+}
 
 async function read(): Promise<Project> {
     return Object.fromEntries(await Promise.all(files.map(async file => [file, await readFile(join(projectFolder, file), "utf8")]))) as Project
