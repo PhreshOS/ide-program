@@ -1,0 +1,36 @@
+{
+  "name": "ide-program",
+  "private": true,
+  "version": "0.0.1",
+  "description": "A proof that a Program can build and run another Program inside the System.",
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "build": "vite-node scripts/build.ts",
+    "dev": "phresh dev",
+    "start": "phresh start"
+  },
+  "dependencies": {
+    "@phreshos/client": "^0.1.59",
+    "@phreshos/core": "^0.1.72",
+    "@phreshos/react": "^0.1.38",
+    "@phreshos/react-ui": "^0.1.53",
+    "@phreshos/server": "^0.1.62",
+    "esbuild": "^0.28.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@phreshos/cli": "^0.1.82",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2",
+    "vite-node": "^6.0.0"
+  }
+}
