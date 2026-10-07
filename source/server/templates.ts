@@ -15,27 +15,25 @@ context.answer("machine", () => ({
 }))
 `,
     "client.tsx": `import { context } from "@phreshos/client"
-import { Button, Flex, Heading, Text } from "@phreshos/react-ui"
+import { Flex, Heading, Text } from "@phreshos/react-ui"
 import { useEffect, useState } from "react"
 
 type Machine = Record<string, string | number>
 
 // The Client asks its Server, and shows the answer.
 export default function App() {
+
     const [machine, setMachine] = useState<Machine | null>(null)
 
-    async function read() {
-        await context.server.waitReady()
-        setMachine(await context.server.ask<Machine>("machine"))
-    }
+    useEffect(() => {
 
-    useEffect(() => { void read() }, [])
+        context.server.ask<Machine>("machine").then(setMachine)
+    }, [])
 
     return <Flex direction="column" gap={12} style={{ padding: 20 }}>
         <Heading>This machine</Heading>
         {machine && Object.entries(machine).map(([name, value]) =>
             <Text key={name}>{name}: {value}</Text>)}
-        <Button onPress={() => void read()}>Read again</Button>
     </Flex>
 }
 `

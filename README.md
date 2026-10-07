@@ -1,10 +1,15 @@
 # IDE
 
-The PhreshOS Program for writing a PhreshOS app, its Server and its Client,
-and running it beside the IDE.
+A small demonstration that a PhreshOS Program can write, build, and run
+another Program inside the System: two files, a Start button, and the app
+opens beside it.
 
-[Programs](https://docs.phreshos.com/runtime/programs) ·
-[Communication](https://docs.phreshos.com/runtime/communication) ·
+It is not the way to develop PhreshOS apps. Apps are developed in any editor,
+with the `phresh` command line: `phresh create`, then `phresh dev`. See
+[Project commands](https://phreshos.com/docs/sdks/cli/project-commands).
+
+[Programs](https://phreshos.com/docs/program/programs) ·
+[Communication](https://phreshos.com/docs/program/communication) ·
 [Source](https://github.com/PhreshOS/ide-program)
 
 ## Role

@@ -1,8 +1,8 @@
 {
   "name": "ide-program",
   "private": true,
-  "version": "0.1.0",
-  "description": "The official PhreshOS IDE Program.",
+  "version": "0.1.1",
+  "description": "A small demonstration of a PhreshOS Program that writes, builds, and runs another Program.",
   "type": "module",
   "scripts": {
     "check": "tsc --noEmit",

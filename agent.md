@@ -1,5 +1,8 @@
 # IDE
 
+A small demonstration of a Program building and running another Program. To develop a real
+PhreshOS app, use any editor and the `phresh` command line (`phresh create`, `phresh dev`).
+
 The IDE holds one app of two files, `server.ts` (a Node.js worker Server) and
 `client.tsx` (a React Client that default-exports `App`), and runs it in the
 System as the Program `my-app`, "My App".
