@@ -1,7 +1,7 @@
 {
   "name": "ide-program",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A small demonstration of a PhreshOS Program that writes, builds, and runs another Program.",
   "type": "module",
   "scripts": {
@@ -23,7 +23,7 @@
     "@phreshos/client": "^0.2.0",
     "@phreshos/core": "^0.2.0",
     "@phreshos/react": "^0.2.0",
-    "@phreshos/react-ui": "^0.2.0",
+    "@phreshos/react-ui": "^0.2.1",
     "@phreshos/server": "^0.2.0",
     "@typescript/vfs": "^1.6.5",
     "@valtown/codemirror-ts": "^2.3.1",
