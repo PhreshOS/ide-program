@@ -1,5 +1,5 @@
 import { desktop, system } from "@phreshos/client"
-import { DesktopProvider, SystemProvider, useDesktopPreferences, useSystemAppearance } from "@phreshos/react"
+import { DesktopProvider, SystemProvider, useResolvedDesktopPreferences, useSystemAppearance } from "@phreshos/react"
 import { DocumentTheme, Loading, UIProvider } from "@phreshos/react-ui"
 import IDE from "./ide"
 import "./style.css"
@@ -14,7 +14,7 @@ export default function View() {
 }
 
 function Themed() {
-    return <UIProvider appearance={useSystemAppearance()} preferences={useDesktopPreferences()}>
+    return <UIProvider appearance={useSystemAppearance()} preferences={useResolvedDesktopPreferences()}>
         <DocumentTheme />
         <Loading><IDE /></Loading>
     </UIProvider>

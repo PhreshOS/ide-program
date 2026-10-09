@@ -47,12 +47,12 @@ function failed(failure: BuildFailure) {
 /** The Client starts its App in the System's Appearance and the Desktop's preferences, as every Program does. */
 const entry = `import client from "react-dom/client"
 import { desktop, system } from "@phreshos/client"
-import { DesktopProvider, SystemProvider, useDesktopPreferences, useSystemAppearance } from "@phreshos/react"
+import { DesktopProvider, SystemProvider, useResolvedDesktopPreferences, useSystemAppearance } from "@phreshos/react"
 import { DocumentTheme, UIProvider } from "@phreshos/react-ui"
 import App from "./client"
 
 function Themed() {
-    return <UIProvider appearance={useSystemAppearance()} preferences={useDesktopPreferences()}>
+    return <UIProvider appearance={useSystemAppearance()} preferences={useResolvedDesktopPreferences()}>
         <DocumentTheme />
         <App />
     </UIProvider>
