@@ -4,7 +4,7 @@ export default defineConfig({
   identity: "ide",
   name: "IDE",
   description: "A small demonstration: write a two-file PhreshOS app and run it beside the editor.",
-  version: "0.7.0",
+  version: "0.8.0",
   // Drawn from icon.svg: a light editor, its files in a green column beside the code, the last row sprouting.
   icon: "icon.png",
   categories: ["Development"],
