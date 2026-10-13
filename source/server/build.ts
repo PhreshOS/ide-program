@@ -1,10 +1,21 @@
-import { build, type BuildFailure, type BuildOptions } from "esbuild"
+import { build, type BuildFailure, type BuildOptions, type Plugin } from "esbuild"
 import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { Project } from "@shared/project"
 
-// The libraries the app imports are the ones installed beside this Server.
-const libraries = join(import.meta.dirname, "node_modules")
+/**
+ * The libraries the app imports are the ones installed beside this Server. A bundler looks for a library
+ * in every `node_modules` above the importing file first, so the app's own imports are looked up from
+ * here instead: any `node_modules` above the System's folder (a home folder's, for one) never stands in.
+ */
+const libraries: Plugin = {
+    name: "libraries",
+    setup(build) {
+        build.onResolve({ filter: /^[^./]/ }, ({ path, kind, importer, pluginData }) => pluginData === libraries || /[\\/]node_modules[\\/]/.test(importer)
+            ? undefined
+            : build.resolve(path, { kind, importer, resolveDir: import.meta.dirname, pluginData: libraries }))
+    }
+}
 
 /**
  * Builds the app into one folder, as a Program's files: `server/main.js`, a Node.js worker, and
@@ -18,7 +29,7 @@ export default async function buildApp(project: Project, folder: string): Promis
     await writeFile(join(source, "client.tsx"), project["client.tsx"])
     await writeFile(join(source, "main.tsx"), entry)
 
-    const shared: BuildOptions = { bundle: true, format: "esm", nodePaths: [libraries], logLevel: "silent", write: false }
+    const shared: BuildOptions = { bundle: true, format: "esm", plugins: [libraries], logLevel: "silent", write: false }
     const results = await Promise.all([
         build({ ...shared, entryPoints: [join(source, "server.ts")], platform: "node", outfile: join(folder, "server", "main.js") }).catch(failed),
         build({ ...shared, entryPoints: [join(source, "main.tsx")], platform: "browser", jsx: "automatic", minify: true, define: { "process.env.NODE_ENV": "\"production\"" }, outfile: join(folder, "client", "main.js") }).catch(failed)
