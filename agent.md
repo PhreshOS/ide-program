@@ -11,10 +11,12 @@ Everything lives in one Server: the Process named `ide`, Server only. IDE
 windows are Client-only Processes that reach it. It ends once no IDE window is
 open, and the app ends with it.
 
-Reach it with:
+Every request here is an Execute request: a JSON object the System understands
+as it is. Ask the Server with an `endpoint` `ask` request, the event's payload
+as its `input`:
 
-```sh
-phresh endpoint ask --program ide --process ide --endpoint server --event project.read --json
+```json
+{ "$domain": "endpoint", "$operation": "ask", "program": "ide", "process": "ide", "endpoint": "server", "event": "project.read" }
 ```
 
 ## Write and run the app
