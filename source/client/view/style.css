@@ -16,8 +16,9 @@ body {
     background: transparent;
 }
 
-/* The bar, the files below it, and what the bundler reported under them. */
-.ide { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 0.5rem; height: 100%; padding: 0 0.625rem 0.625rem; }
+/* The bar, the files below it, and what the bundler reported under them. A little room above the bar,
+   so the frame's top edge does not cut its controls' shadows. */
+.ide { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 0.5rem; height: 100%; padding: 0.25rem 0.625rem 0.625rem; }
 
 .ide-bar { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
 
