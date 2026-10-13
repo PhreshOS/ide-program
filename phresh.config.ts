@@ -5,7 +5,7 @@ export default defineConfig({
   name: "IDE",
   description: "A small demonstration: write a two-file PhreshOS app and run it beside the editor.",
   version: "0.7.0",
-  // Drawn from icon.svg: an apricot frame, and on its dark soil a code tag whose slash is a sprout.
+  // Drawn from icon.svg: a light editor, its files in a green column beside the code, the last row sprouting.
   icon: "icon.png",
   categories: ["Development"],
   keywords: ["ide", "editor", "code", "typescript", "react"],
